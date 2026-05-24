@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>AWM Market Terminal</title>
+<title>Fyers Market Terminal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -236,7 +236,7 @@ table.ht tbody td:first-child{text-align:left;color:var(--muted)}
 <!-- ═══ SETUP ═══ -->
 <div id="sc-setup" class="screen">
 <div class="card">
-  <div class="logo-row"><div class="logo-box">⚡</div><div><div class="logo-t">AWM Terminal</div><div class="logo-s">First-Time Setup</div></div></div>
+  <div class="logo-row"><div class="logo-box">⚡</div><div><div class="logo-t">Fyers Terminal</div><div class="logo-s">First-Time Setup</div></div></div>
   <div class="al al-info"><span class="al-icon">🔒</span><span>Credentials saved only in <strong>your browser</strong>. Never shared with anyone.</span></div>
   <div class="field"><label>App ID (Client ID)</label><input id="s-appid" placeholder="XXXXXXXX-100"><div class="hint">myapi.fyers.in → Dashboard → Your App</div></div>
   <div class="field"><label>App Secret</label><input id="s-secret" type="password" placeholder="••••••••••••••••"></div>
@@ -257,7 +257,7 @@ table.ht tbody td:first-child{text-align:left;color:var(--muted)}
 <!-- ═══ LOGIN ═══ -->
 <div id="sc-login" class="screen">
 <div class="card">
-  <div class="logo-row"><div class="logo-box">⚡</div><div><div class="logo-t">AWM Terminal</div><div class="logo-s" id="l-appid">App: —</div></div><div style="flex:1"></div><button class="btn btn-g" style="padding:5px 10px;font-size:10px" onclick="showSetup()">⚙ RESET</button></div>
+  <div class="logo-row"><div class="logo-box">⚡</div><div><div class="logo-t">Fyers Terminal</div><div class="logo-s" id="l-appid">App: —</div></div><div style="flex:1"></div><button class="btn btn-g" style="padding:5px 10px;font-size:10px" onclick="showSetup()">⚙ RESET</button></div>
   <div class="steps">
     <div class="sdot sdot-act" id="sd1">1</div><div class="slbl slbl-act" id="sl1">Open Fyers Login</div>
     <div class="sline" id="sln"></div>
@@ -450,16 +450,17 @@ let creds=null, session=null;
 // watchlist: [{sym, data}]
 let watchlist = [];
 let refreshTimer=null, clockTimer=null;
-let currentRes='1D', candleData=[];
+let currentRes='D', candleData=[];
 
 const DEFAULT_SYMS = [
   'NSE:RELIANCE-EQ','NSE:INFY-EQ','NSE:TCS-EQ','NSE:HDFCBANK-EQ',
   'NSE:ICICIBANK-EQ','NSE:SBIN-EQ','NSE:WIPRO-EQ','NSE:BAJFINANCE-EQ',
   'NSE:NIFTY50-INDEX','BSE:SENSEX-INDEX'
 ];
+// Fyers API resolution values: numbers for intraday, "D"/"W"/"M" for daily/weekly/monthly
 const RESOLUTIONS = [
   {l:'1m',v:'1'},{l:'5m',v:'5'},{l:'15m',v:'15'},{l:'30m',v:'30'},
-  {l:'1H',v:'60'},{l:'1D',v:'1D'},{l:'1W',v:'1W'},{l:'1M',v:'1M'}
+  {l:'1H',v:'60'},{l:'1D',v:'D'},{l:'1W',v:'W'},{l:'1M',v:'M'}
 ];
 
 /* ══════════════════════════════════════════════════════════════
@@ -908,7 +909,7 @@ function buildResButtons(){
 // Max days allowed per resolution (Fyers API limits)
 const RES_MAX_DAYS = {
   '1':20, '2':40, '3':60, '5':100, '10':100, '15':100,
-  '20':100, '30':100, '60':100, '1D':365, '1W':730, '1M':1825
+  '20':100, '30':100, '60':100, 'D':366, 'W':730, 'M':1825
 };
 
 // Convert YYYY-MM-DD string → Unix timestamp at midnight IST (UTC+5:30)
@@ -980,13 +981,11 @@ async function loadHistory(){
   }
   if(diffDays<0){showErr('hist-err','hist-err-txt','From date must be before To date.');return;}
 
-  // KEY FIX: Use YYYY-MM-DD string format with date_format=0
-  // date_format=0 → Fyers accepts YYYY-MM-DD strings directly (no Unix conversion needed)
-  // date_format=1 → Unix timestamps (prone to timezone bugs from browser)
-  // Using date_format=0 is safer and simpler from a browser
   document.getElementById('chart-lbl').textContent='Loading…';
   try{
-    const url=`${API.HISTORY}?symbol=${encodeURIComponent(sym)}&resolution=${currentRes}&date_format=0&range_from=${fromStr}&range_to=${toStr}&cont_flag=1`;
+    // date_format=1 with YYYY-MM-DD strings is the confirmed working format from Fyers community
+    // resolution: numbers for intraday (1,5,15,30,60), "D"/"W"/"M" for daily/weekly/monthly
+    const url=`${API.HISTORY}?symbol=${encodeURIComponent(sym)}&resolution=${currentRes}&date_format=1&range_from=${fromStr}&range_to=${toStr}&cont_flag=1`;
     const r=await fetch(url,{headers:hdrs()});
     const ct=r.headers.get('content-type')||'';
     if(!ct.includes('application/json')){
@@ -1007,8 +1006,9 @@ async function loadHistory(){
       drawCandles();
       document.getElementById('ht-wrap').style.display='none';
     }else{
-      showErr('hist-err','hist-err-txt',(d.message||JSON.stringify(d))+' [code:'+d.code+']');
-      document.getElementById('chart-lbl').textContent='Error loading chart';
+      // Show full raw response to help debug
+      showErr('hist-err','hist-err-txt','Fyers error: "'+( d.message||'unknown')+'" | code:'+d.code+' | full: '+JSON.stringify(d));
+      document.getElementById('chart-lbl').textContent='Error — see message above';
     }
   }catch(e){
     showErr('hist-err','hist-err-txt','Network error: '+e.message);
@@ -1072,7 +1072,7 @@ function renderHistTable(sym){
     const up=c.close>=c.open,pct=((c.close-c.open)/c.open*100).toFixed(2);
     const d=new Date(c.ts*1000);
     const ds=d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
-    const ts=['1D','1W','1M'].includes(currentRes)?'':' '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false});
+    const ts=['D','W','M'].includes(currentRes)?'':' '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false});
     return `<tr>
       <td>${ds}<span style="color:var(--dim)">${ts}</span></td>
       <td>₹${fmt2(c.open)}</td>
