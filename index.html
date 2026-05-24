@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>AWM Trading Terminal</title>
+<title>AWM Market Terminal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -236,7 +236,7 @@ table.ht tbody td:first-child{text-align:left;color:var(--muted)}
 <!-- ═══ SETUP ═══ -->
 <div id="sc-setup" class="screen">
 <div class="card">
-  <div class="logo-row"><div class="logo-box">⚡</div><div><div class="logo-t">AWM TERMINAL</div><div class="logo-s">First-Time Setup</div></div></div>
+  <div class="logo-row"><div class="logo-box">⚡</div><div><div class="logo-t">AWM Terminal</div><div class="logo-s">First-Time Setup</div></div></div>
   <div class="al al-info"><span class="al-icon">🔒</span><span>Credentials saved only in <strong>your browser</strong>. Never shared with anyone.</span></div>
   <div class="field"><label>App ID (Client ID)</label><input id="s-appid" placeholder="XXXXXXXX-100"><div class="hint">myapi.fyers.in → Dashboard → Your App</div></div>
   <div class="field"><label>App Secret</label><input id="s-secret" type="password" placeholder="••••••••••••••••"></div>
@@ -257,7 +257,7 @@ table.ht tbody td:first-child{text-align:left;color:var(--muted)}
 <!-- ═══ LOGIN ═══ -->
 <div id="sc-login" class="screen">
 <div class="card">
-  <div class="logo-row"><div class="logo-box">⚡</div><div><div class="logo-t">AWM TERMINAL</div><div class="logo-s" id="l-appid">App: —</div></div><div style="flex:1"></div><button class="btn btn-g" style="padding:5px 10px;font-size:10px" onclick="showSetup()">⚙ RESET</button></div>
+  <div class="logo-row"><div class="logo-box">⚡</div><div><div class="logo-t">AWM Terminal</div><div class="logo-s" id="l-appid">App: —</div></div><div style="flex:1"></div><button class="btn btn-g" style="padding:5px 10px;font-size:10px" onclick="showSetup()">⚙ RESET</button></div>
   <div class="steps">
     <div class="sdot sdot-act" id="sd1">1</div><div class="slbl slbl-act" id="sl1">Open Fyers Login</div>
     <div class="sline" id="sln"></div>
@@ -289,7 +289,7 @@ table.ht tbody td:first-child{text-align:left;color:var(--muted)}
   <!-- Topbar -->
   <div id="topbar">
     <div class="tb-logo">⚡</div>
-    <span class="tb-name">AWM TERMINAL</span>
+    <span class="tb-name">FYERS TERMINAL</span>
     <span class="tb-chip" id="tb-user" style="display:none"></span>
     <div class="tb-spacer"></div>
     <div class="sess-dot sess-ok" id="sess-dot"></div>
@@ -407,6 +407,7 @@ table.ht tbody td:first-child{text-align:left;color:var(--muted)}
           <button class="btn btn-p" onclick="loadHistory()">LOAD CHART</button>
           <div id="hist-err" class="al al-err" style="display:none;margin-bottom:0"><span class="al-icon">❌</span><span id="hist-err-txt"></span></div>
         </div>
+        <div id="hist-range-info" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:10px">Max range for 1D: 365 days</div>
         <div class="chart-wrap">
           <div class="chart-lbl" id="chart-lbl">CANDLESTICK · select symbol &amp; press LOAD</div>
           <canvas id="cc" style="width:100%;display:block" height="240"></canvas>
@@ -899,37 +900,120 @@ function buildResButtons(){
     const b=document.createElement('button');
     b.className='rb'+(r.v===currentRes?' on':'');
     b.textContent=r.l;
-    b.onclick=()=>{ currentRes=r.v; document.querySelectorAll('.rb').forEach(x=>x.classList.remove('on')); b.classList.add('on'); };
+    b.dataset.res=r.v;
+    b.onclick=()=>onResChange(r.v);
     row.appendChild(b);
   });
 }
+// Max days allowed per resolution (Fyers API limits)
+const RES_MAX_DAYS = {
+  '1':20, '2':40, '3':60, '5':100, '10':100, '15':100,
+  '20':100, '30':100, '60':100, '1D':365, '1W':730, '1M':1825
+};
+
+// Convert YYYY-MM-DD string → Unix timestamp at midnight IST (UTC+5:30)
+// Avoids timezone-offset bug where new Date('2024-01-01') gives Dec 31 UTC
+function dateStrToUnix(str){
+  const [y,m,d]=str.split('-').map(Number);
+  // Create date at 00:00:00 IST = UTC-5h30m
+  const utcMs=Date.UTC(y,m-1,d,0,0,0)-(5.5*3600*1000);
+  return Math.floor(utcMs/1000);
+}
+
+// Today's date as YYYY-MM-DD in IST
+function todayIST(){
+  return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'}); // en-CA gives YYYY-MM-DD
+}
+
+// Subtract N days from a YYYY-MM-DD string
+function subtractDays(str,n){
+  const d=new Date(str+'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate()-n);
+  return d.toISOString().split('T')[0];
+}
+
 function initDates(){
-  const t=new Date(),f=new Date();
-  f.setMonth(f.getMonth()-3);
-  document.getElementById('to-d').value=t.toISOString().split('T')[0];
-  document.getElementById('from-d').value=f.toISOString().split('T')[0];
+  const today=todayIST();
+  const from=subtractDays(today,90); // default 3 months for daily
+  document.getElementById('to-d').value=today;
+  document.getElementById('from-d').value=from;
+}
+
+function onResChange(v){
+  currentRes=v;
+  document.querySelectorAll('.rb').forEach(b=>{
+    b.classList.toggle('on', b.dataset.res===v);
+  });
+  const maxDays=RES_MAX_DAYS[v]||100;
+  const today=todayIST();
+  const toVal=document.getElementById('to-d').value||today;
+  const fromVal=document.getElementById('from-d').value||subtractDays(today,maxDays);
+  const diffDays=Math.round((new Date(toVal)-new Date(fromVal))/(86400000));
+  const info=document.getElementById('hist-range-info');
+  if(diffDays>maxDays){
+    const newFrom=subtractDays(toVal,maxDays);
+    document.getElementById('from-d').value=newFrom;
+    info.textContent=`⚠ Date range auto-adjusted to ${maxDays}-day limit for ${v} resolution`;
+    info.style.color='var(--amber)';
+  } else {
+    info.textContent=`Max range for ${v}: ${maxDays} days`;
+    info.style.color='var(--muted)';
+  }
 }
 
 async function loadHistory(){
   const sym=document.getElementById('hist-sym-sel').value;
   if(!sym){alert('Please select a symbol first.');return;}
   hideErr('hist-err');
-  const from=Math.floor(new Date(document.getElementById('from-d').value).getTime()/1000);
-  const to=Math.floor(new Date(document.getElementById('to-d').value).getTime()/1000);
+
+  const fromStr=document.getElementById('from-d').value;
+  const toStr=document.getElementById('to-d').value;
+  if(!fromStr||!toStr){showErr('hist-err','hist-err-txt','Please select both From and To dates.');return;}
+
+  // Validate range against resolution limit
+  const maxDays=RES_MAX_DAYS[currentRes]||100;
+  const diffDays=Math.round((new Date(toStr)-new Date(fromStr))/(86400000));
+  if(diffDays>maxDays){
+    showErr('hist-err','hist-err-txt',
+      `Date range (${diffDays} days) exceeds ${maxDays}-day limit for ${currentRes} resolution. Please reduce the range.`);
+    return;
+  }
+  if(diffDays<0){showErr('hist-err','hist-err-txt','From date must be before To date.');return;}
+
+  // KEY FIX: Use YYYY-MM-DD string format with date_format=0
+  // date_format=0 → Fyers accepts YYYY-MM-DD strings directly (no Unix conversion needed)
+  // date_format=1 → Unix timestamps (prone to timezone bugs from browser)
+  // Using date_format=0 is safer and simpler from a browser
+  document.getElementById('chart-lbl').textContent='Loading…';
   try{
-    const r=await fetch(`${API.HISTORY}?symbol=${encodeURIComponent(sym)}&resolution=${currentRes}&date_format=1&range_from=${from}&range_to=${to}&cont_flag=1`,{headers:hdrs()});
+    const url=`${API.HISTORY}?symbol=${encodeURIComponent(sym)}&resolution=${currentRes}&date_format=0&range_from=${fromStr}&range_to=${toStr}&cont_flag=1`;
+    const r=await fetch(url,{headers:hdrs()});
     const ct=r.headers.get('content-type')||'';
-    if(!ct.includes('application/json')){showErr('hist-err','hist-err-txt','History API returned non-JSON response. Please check token.');return;}
+    if(!ct.includes('application/json')){
+      showErr('hist-err','hist-err-txt','History API returned non-JSON. Token may have expired — please Relogin.');
+      document.getElementById('chart-lbl').textContent='Error — check token';
+      return;
+    }
     const d=await r.json();
-    if(d.s==='ok'){
-      candleData=(d.candles||[]).map(([ts,o,h,l,c,v])=>({ts,open:o,high:h,low:l,close:c,volume:v}));
-      document.getElementById('chart-lbl').textContent=`CANDLESTICK · ${sym} · ${currentRes} · ${candleData.length} candles`;
+    if(d.s==='ok'&&Array.isArray(d.candles)){
+      candleData=d.candles.map(([ts,o,h,l,c,v])=>({ts,open:o,high:h,low:l,close:c,volume:v}));
+      document.getElementById('chart-lbl').textContent=
+        `CANDLESTICK · ${sym} · ${currentRes} · ${candleData.length} candles · ${fromStr} → ${toStr}`;
       drawCandles();
       renderHistTable(sym);
+    }else if(d.s==='ok'&&(!d.candles||d.candles.length===0)){
+      candleData=[];
+      document.getElementById('chart-lbl').textContent=`No data for ${sym} in selected range`;
+      drawCandles();
+      document.getElementById('ht-wrap').style.display='none';
     }else{
-      showErr('hist-err','hist-err-txt',d.message||'Failed: '+JSON.stringify(d));
+      showErr('hist-err','hist-err-txt',(d.message||JSON.stringify(d))+' [code:'+d.code+']');
+      document.getElementById('chart-lbl').textContent='Error loading chart';
     }
-  }catch(e){showErr('hist-err','hist-err-txt','Error: '+e.message);}
+  }catch(e){
+    showErr('hist-err','hist-err-txt','Network error: '+e.message);
+    document.getElementById('chart-lbl').textContent='Error';
+  }
 }
 
 /* ── Candle Chart ── */
