@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fyers Market Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0d14;
+  --s1:#0f1320;
+  --s2:#141926;
+  --s3:#1a2030;
+  --border:#252d42;
+  --border2:#2e3850;
+  --accent:#00d4ff;
+  --accent2:#0099cc;
+  --green:#00e676;
+  --red:#ff3d5a;
+  --amber:#ffb300;
+  --white:#ffffff;
+  --text:#e8edf8;
+  --muted:#7a8aaa;
+  --dim:#3a4460;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Space Grotesk',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px}
+input,button,select,textarea{font-family:inherit}
+input:focus,textarea:focus{outline:none!important;border-color:var(--accent)!important;box-shadow:0 0 0 2px rgba(0,212,255,.15)!important}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ── Loading ── */
+#boot{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:16px}
+.boot-logo{width:56px;height:56px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;animation:pop .4s ease}
+@keyframes pop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+.boot-txt{color:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:3px;animation:blink 1.2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* ── Screens ── */
+.screen{display:none;min-height:100vh;align-items:center;justify-content:center;padding:20px}
+.screen.active{display:flex}
+.card{background:var(--s1);border:1px solid var(--border2);border-radius:20px;padding:40px;width:480px;max-width:100%;box-shadow:0 32px 80px rgba(0,0,0,.6)}
+
+/* ── Logo ── */
+.logo-row{display:flex;align-items:center;gap:14px;margin-bottom:28px}
+.logo-box{width:46px;height:46px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.logo-t{font-weight:700;font-size:18px;color:var(--white);letter-spacing:-.3px}
+.logo-s{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:1px}
+
+/* ── Fields ── */
+.field{margin-bottom:14px}
+.field label{display:block;color:var(--accent);font-size:10px;font-family:var(--mono);letter-spacing:1.8px;text-transform:uppercase;font-weight:600;margin-bottom:5px}
+.field input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;color:var(--white);font-family:var(--mono);font-size:13px;transition:all .2s}
+.field .hint{color:var(--muted);font-size:11px;font-family:var(--mono);margin-top:4px}
+
+/* ── Alert boxes ── */
+.al{border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:11px;line-height:1.7;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start}
+.al-icon{flex-shrink:0;font-size:13px}
+.al-info{background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.25);color:var(--accent)}
+.al-warn{background:rgba(255,179,0,.07);border:1px solid rgba(255,179,0,.25);color:var(--amber)}
+.al-err{background:rgba(255,61,90,.07);border:1px solid rgba(255,61,90,.25);color:var(--red)}
+.al-ok{background:rgba(0,230,118,.07);border:1px solid rgba(0,230,118,.25);color:var(--green)}
+
+/* ── Buttons ── */
+.btn{border:none;border-radius:8px;padding:10px 18px;cursor:pointer;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.5px;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-p{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#000}
+.btn-p:not(:disabled):hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-g{background:var(--s2);border:1px solid var(--border2)!important;color:var(--text)}
+.btn-g:not(:disabled):hover{border-color:var(--accent)!important;color:var(--accent)}
+.btn-d{background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.3)!important;color:var(--red)}
+.btn-w{width:100%;padding:12px}
+
+/* ── Steps ── */
+.steps{display:flex;align-items:center;gap:8px;margin-bottom:24px}
+.sdot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:700;flex-shrink:0;transition:all .3s}
+.sdot-idle{background:var(--border);color:var(--muted)}
+.sdot-act{background:var(--accent);color:#000}
+.sdot-done{background:var(--green);color:#000}
+.slbl{font-size:12px;font-family:var(--mono);transition:color .3s}
+.slbl-act{color:var(--white)}
+.slbl-idle{color:var(--muted)}
+.sline{flex:1;height:1px;background:var(--border);transition:background .3s}
+.sline-done{background:var(--green)}
+
+/* ════════════════════════════════
+   DASHBOARD
+════════════════════════════════ */
+#dash{display:none;min-height:100vh;flex-direction:column}
+#dash.show{display:flex}
+
+/* ── Topbar ── */
+#topbar{background:var(--s1);border-bottom:2px solid var(--border2);padding:0 18px;display:flex;align-items:center;gap:12px;height:50px;position:sticky;top:0;z-index:200;flex-shrink:0}
+.tb-logo{width:30px;height:30px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.tb-name{font-family:var(--mono);font-weight:700;font-size:12px;color:var(--accent);letter-spacing:1.5px}
+.tb-spacer{flex:1}
+.tb-chip{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);border-radius:5px;padding:2px 8px;color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.8px}
+.sess-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sess-ok{background:var(--green);box-shadow:0 0 7px var(--green)}
+.sess-warn{background:var(--amber);box-shadow:0 0 7px var(--amber)}
+.sess-bad{background:var(--red);box-shadow:0 0 7px var(--red)}
+
+/* ── Layout ── */
+#dash-body{display:flex;flex:1;overflow:hidden}
+#sidebar{width:220px;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+#main{flex:1;overflow:auto;padding:16px}
+
+/* ── Sidebar ── */
+.sb-hdr{padding:10px 14px 6px;font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:2px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+.sb-search{padding:8px 10px;border-bottom:1px solid var(--border)}
+.sb-search input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:var(--mono);font-size:11px}
+.sb-list{flex:1;overflow-y:auto}
+.sb-item{display:flex;align-items:center;padding:7px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.03);transition:background .15s;gap:8px}
+.sb-item:hover{background:var(--s2)}
+.sb-item.active{background:rgba(0,212,255,.08);border-left:2px solid var(--accent)}
+.sb-sym{font-family:var(--mono);font-size:11px;color:var(--white);font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-price{font-family:var(--mono);font-size:11px;font-weight:600;text-align:right}
+.sb-chg{font-family:var(--mono);font-size:9px;text-align:right}
+.sb-add{padding:10px;border-top:1px solid var(--border);display:flex;gap:6px}
+.sb-add input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-family:var(--mono);font-size:10px}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:3px;margin-bottom:14px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:3px;width:fit-content}
+.tab{background:transparent;border:1px solid transparent;border-radius:7px;padding:6px 16px;color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;font-weight:500;letter-spacing:.3px;transition:all .15s}
+.tab.on{background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.4);color:var(--accent);font-weight:700}
+
+/* ════════════════════════════════
+   MARKET TABLE (watchlist grid)
+════════════════════════════════ */
+.mkt-wrap{overflow-x:auto;border:1px solid var(--border2);border-radius:12px;background:var(--s1)}
+.mkt-table{width:100%;border-collapse:collapse;min-width:900px}
+.mkt-table thead tr{background:var(--s3);border-bottom:2px solid var(--border2)}
+.mkt-table thead th{
+  padding:10px 12px;
+  font-family:var(--mono);
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  color:var(--white);
+  text-align:right;
+  white-space:nowrap;
+  border-right:1px solid var(--border);
+}
+.mkt-table thead th:first-child{text-align:left;color:var(--accent)}
+.mkt-table thead th:last-child{border-right:none}
+.mkt-table tbody tr{border-bottom:1px solid var(--border);transition:background .1s;cursor:pointer}
+.mkt-table tbody tr:hover{background:rgba(0,212,255,.04)}
+.mkt-table tbody tr.selected{background:rgba(0,212,255,.08);border-left:2px solid var(--accent)}
+.mkt-table tbody td{
+  padding:9px 12px;
+  font-family:var(--mono);
+  font-size:12px;
+  text-align:right;
+  white-space:nowrap;
+  border-right:1px solid rgba(255,255,255,.04);
+  color:var(--text);
+}
+.mkt-table tbody td:first-child{text-align:left;font-weight:600;color:var(--white)}
+.mkt-table tbody td:last-child{border-right:none}
+.up{color:var(--green)!important}
+.dn{color:var(--red)!important}
+.neutral{color:var(--muted)!important}
+.sym-tag{font-size:9px;color:var(--muted);font-weight:400;display:block;margin-top:1px}
+.chg-badge{display:inline-block;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700}
+.chg-up{background:rgba(0,230,118,.15);color:var(--green)}
+.chg-dn{background:rgba(255,61,90,.15);color:var(--red)}
+.chg-nt{background:rgba(122,138,170,.1);color:var(--muted)}
+
+/* ── Toolbar above table ── */
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.add-row{display:flex;gap:8px;flex:1;min-width:260px}
+.add-row input{flex:1;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--white);font-family:var(--mono);font-size:12px}
+.status-bar{display:flex;gap:6px;align-items:center;font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+/* ── Depth panel ── */
+.depth-wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.panel-card{background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:16px}
+.panel-hdr{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--white);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;text-transform:uppercase}
+.ob-hdr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:3px 2px 7px;border-bottom:1px solid var(--border2);margin-bottom:4px}
+.ob-hlbl{font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:1.5px;font-weight:700;text-transform:uppercase}
+.ob-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:5px 2px;position:relative;border-bottom:1px solid rgba(255,255,255,.03)}
+.ob-bar{position:absolute;top:0;bottom:0;pointer-events:none;opacity:.1;border-radius:2px}
+.ob-p{font-family:var(--mono);font-size:12px;font-weight:600}
+.ob-o{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center}
+.ob-q{font-family:var(--mono);font-size:11px;color:var(--text)}
+.depth-totals{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.dt-card{background:var(--s3);border-radius:7px;padding:8px 12px;border:1px solid var(--border)}
+.stat-mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat-mini{background:var(--s3);border-radius:7px;padding:9px 12px;border:1px solid var(--border)}
+.stat-mini-l{font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:3px;font-weight:700}
+.stat-mini-v{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--white)}
+
+/* ── History ── */
+.res-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.rb{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .15s}
+.rb.on{background:rgba(0,212,255,.12);border-color:var(--accent);color:var(--accent);font-weight:700}
+.date-row{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.di{background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;color:var(--text);font-family:var(--mono);font-size:11px}
+.chart-wrap{background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:16px;margin-bottom:12px;overflow:hidden}
+.chart-lbl{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:1.5px;font-weight:700;text-transform:uppercase;margin-bottom:10px}
+.hist-table-wrap{background:var(--s1);border:1px solid var(--border2);border-radius:12px;overflow:hidden}
+.hist-t-hdr{padding:10px 16px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;background:var(--s3)}
+table.ht{width:100%;border-collapse:collapse}
+table.ht thead th{padding:8px 12px;background:var(--s2);color:var(--white);font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:1.5px;text-align:right;border-bottom:1px solid var(--border);text-transform:uppercase}
+table.ht thead th:first-child{text-align:left;color:var(--accent)}
+table.ht tbody tr{border-bottom:1px solid rgba(255,255,255,.04)}
+table.ht tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
+table.ht tbody tr:hover{background:rgba(0,212,255,.04)}
+table.ht tbody td{padding:6px 12px;font-family:var(--mono);font-size:11px;text-align:right;color:var(--text)}
+table.ht tbody td:first-child{text-align:left;color:var(--muted)}
+
+/* ── empty / loading states ── */
+.empty-state{color:var(--muted);font-family:var(--mono);font-size:12px;text-align:center;padding:40px 0;letter-spacing:.5px}
+
+@media(max-width:700px){
+  #sidebar{display:none}
+  .depth-wrap{grid-template-columns:1fr}
+  .stat-mini-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ BOOT ═══ -->
+<div id="boot">
+  <div class="boot-logo">⚡</div>
+  <div class="boot-txt">INITIALIZING</div>
+</div>
+
+<!-- ═══ SETUP ═══ -->
+<div id="sc-setup" class="screen">
+<div class="card">
+  <div class="logo-row"><div class="logo-box">⚡</div><div><div class="logo-t">Fyers Terminal</div><div class="logo-s">First-Time Setup</div></div></div>
+  <div class="al al-info"><span class="al-icon">🔒</span><span>Credentials saved only in <strong>your browser</strong>. Never shared with anyone.</span></div>
+  <div class="field"><label>App ID (Client ID)</label><input id="s-appid" placeholder="XXXXXXXX-100"><div class="hint">myapi.fyers.in → Dashboard → Your App</div></div>
+  <div class="field"><label>App Secret</label><input id="s-secret" type="password" placeholder="••••••••••••••••"></div>
+  <div class="field"><label>Redirect URI</label><input id="s-redir" value="https://trade.fyers.in"><div class="hint">Must match your Fyers app settings exactly</div></div>
+  <div style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:8px;padding:12px 14px;margin-bottom:18px">
+    <div style="color:var(--accent);font-size:10px;font-family:var(--mono);letter-spacing:1.5px;font-weight:700;margin-bottom:6px">SETUP GUIDE</div>
+    <div style="color:var(--muted);font-size:11px;font-family:var(--mono);line-height:1.9">
+      1. Go to <strong style="color:var(--white)">myapi.fyers.in</strong> → Login → Dashboard<br>
+      2. Click <strong style="color:var(--white)">Create App</strong> → Type: <strong style="color:var(--white)">Web</strong><br>
+      3. Redirect URI → <strong style="color:var(--accent)">https://trade.fyers.in</strong><br>
+      4. Copy App ID &amp; Secret → paste above → Save
+    </div>
+  </div>
+  <button class="btn btn-p btn-w" onclick="setupSave()">SAVE &amp; CONTINUE →</button>
+</div>
+</div>
+
+<!-- ═══ LOGIN ═══ -->
+<div id="sc-login" class="screen">
+<div class="card">
+  <div class="logo-row"><div class="logo-box">⚡</div><div><div class="logo-t">Fyers Terminal</div><div class="logo-s" id="l-appid">App: —</div></div><div style="flex:1"></div><button class="btn btn-g" style="padding:5px 10px;font-size:10px" onclick="showSetup()">⚙ RESET</button></div>
+  <div class="steps">
+    <div class="sdot sdot-act" id="sd1">1</div><div class="slbl slbl-act" id="sl1">Open Fyers Login</div>
+    <div class="sline" id="sln"></div>
+    <div class="sdot sdot-idle" id="sd2">2</div><div class="slbl slbl-idle" id="sl2">Paste Redirect URL</div>
+  </div>
+  <div id="ls1">
+    <div class="al al-info"><span class="al-icon">ℹ️</span><span>A new tab opens with Fyers login. After logging in, Fyers redirects you — copy that URL and paste it in Step 2.</span></div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 14px;margin-bottom:18px;font-family:var(--mono);font-size:11px;color:var(--muted)">
+      Redirect URI: <span id="l-redir" style="color:var(--accent)"></span>
+    </div>
+    <button class="btn btn-p btn-w" style="padding:13px" onclick="doOpenLogin()">🔐 OPEN FYERS LOGIN →</button>
+  </div>
+  <div id="ls2" style="display:none">
+    <div class="al al-warn"><span class="al-icon">⚠️</span><span>Copy the <strong>full URL</strong> from browser address bar after login. Looks like: <code>https://trade.fyers.in/?auth_code=eyJh…</code></span></div>
+    <div id="l-err" class="al al-err" style="display:none"><span class="al-icon">❌</span><span id="l-err-txt"></span></div>
+    <div class="field"><label>Redirect URL or Auth Code</label><textarea id="paste-url" style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;color:var(--white);font-family:var(--mono);font-size:12px;resize:vertical;min-height:68px" placeholder="Paste full redirect URL here…"></textarea></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-g" style="flex:1" onclick="backStep()">← BACK</button>
+      <button class="btn btn-p" style="flex:2;padding:10px" id="xbtn" onclick="exchangeCode()">GENERATE TOKEN →</button>
+    </div>
+    <div style="text-align:center;margin-top:12px"><button onclick="doOpenLogin()" style="background:transparent;border:none;color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;text-decoration:underline">Re-open Fyers login</button></div>
+  </div>
+</div>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div id="dash">
+
+  <!-- Topbar -->
+  <div id="topbar">
+    <div class="tb-logo">⚡</div>
+    <span class="tb-name">FYERS TERMINAL</span>
+    <span class="tb-chip" id="tb-user" style="display:none"></span>
+    <div class="tb-spacer"></div>
+    <div class="sess-dot sess-ok" id="sess-dot"></div>
+    <span style="font-family:var(--mono);font-size:10px;color:var(--green)" id="sess-lbl"></span>
+    <span style="font-family:var(--mono);font-size:11px;color:var(--muted)" id="ist-clk"></span>
+    <button class="btn btn-g" style="padding:5px 11px;font-size:10px" onclick="relogin()">↻ RELOGIN</button>
+    <button class="btn btn-d" style="padding:5px 11px;font-size:10px" onclick="logout()">LOGOUT</button>
+  </div>
+
+  <div id="dash-body">
+
+    <!-- Sidebar -->
+    <div id="sidebar">
+      <div class="sb-hdr">
+        WATCHLIST
+        <span id="wl-count" style="color:var(--muted);font-weight:400">0</span>
+      </div>
+      <div class="sb-search">
+        <input id="sb-filter" placeholder="Filter…" oninput="filterSidebar()" style="transition:border-color .2s">
+      </div>
+      <div class="sb-list" id="sb-list"></div>
+      <div class="sb-add">
+        <input id="sb-addinp" placeholder="NSE:SBIN-EQ" onkeydown="if(event.key==='Enter')addSymbol()">
+        <button class="btn btn-p" style="padding:5px 10px;font-size:11px" onclick="addSymbol()">+</button>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div id="main">
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="add-row">
+          <input id="bulk-inp" placeholder="Add symbols: NSE:RELIANCE-EQ, NSE:TCS-EQ, NSE:INFY-EQ …  (comma separated)" onkeydown="if(event.key==='Enter')bulkAdd()">
+          <button class="btn btn-p" onclick="bulkAdd()">ADD</button>
+          <button class="btn btn-g" onclick="refreshAll()">↻ REFRESH ALL</button>
+        </div>
+        <div class="status-bar">
+          <div id="last-upd">—</div>
+          <span>·</span>
+          <span id="sym-count">0 symbols</span>
+        </div>
+      </div>
+
+      <!-- TABS -->
+      <div class="tabs">
+        <button class="tab on" onclick="switchTab('mkt',this)">📊 Market Watch</button>
+        <button class="tab" onclick="switchTab('depth',this)">📋 Depth</button>
+        <button class="tab" onclick="switchTab('history',this)">📈 History</button>
+      </div>
+
+      <!-- ── MARKET WATCH ── -->
+      <div id="p-mkt" class="tab-panel">
+        <div class="mkt-wrap">
+          <table class="mkt-table">
+            <thead>
+              <tr>
+                <th style="text-align:left;min-width:160px">SYMBOL</th>
+                <th>LTP</th>
+                <th>CHANGE</th>
+                <th>CHG%</th>
+                <th>OPEN</th>
+                <th>HIGH</th>
+                <th>LOW</th>
+                <th>PREV CLOSE</th>
+                <th>VOLUME</th>
+                <th>BUY QTY</th>
+                <th>SELL QTY</th>
+                <th>52W H</th>
+                <th>52W L</th>
+                <th>AVG PRICE</th>
+                <th style="min-width:60px">ACTION</th>
+              </tr>
+            </thead>
+            <tbody id="mkt-body">
+              <tr><td colspan="15" class="empty-state">Add symbols above to start tracking</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── DEPTH ── -->
+      <div id="p-depth" class="tab-panel" style="display:none">
+        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <select id="depth-sym-sel" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--white);font-family:var(--mono);font-size:12px;min-width:200px">
+            <option value="">Select a symbol…</option>
+          </select>
+          <button class="btn btn-p" onclick="loadDepth()">LOAD DEPTH</button>
+          <div id="depth-err" class="al al-err" style="display:none;margin-bottom:0"><span class="al-icon">❌</span><span id="depth-err-txt"></span></div>
+        </div>
+        <div class="depth-wrap">
+          <div class="panel-card">
+            <div class="panel-hdr">Order Book <span id="depth-sym-lbl" style="color:var(--accent);font-size:9px"></span></div>
+            <div id="ob-content"><div class="empty-state">Select symbol &amp; press LOAD DEPTH</div></div>
+          </div>
+          <div class="panel-card">
+            <div class="panel-hdr">OHLCV Snapshot</div>
+            <div id="ohlcv-snap"><div class="empty-state">Load depth first</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── HISTORY ── -->
+      <div id="p-history" class="tab-panel" style="display:none">
+        <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <select id="hist-sym-sel" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--white);font-family:var(--mono);font-size:12px;min-width:200px">
+            <option value="">Select a symbol…</option>
+          </select>
+        </div>
+        <div class="res-row" id="res-row"></div>
+        <div class="date-row">
+          <input class="di" type="date" id="from-d">
+          <span style="color:var(--muted);font-family:var(--mono);font-size:12px">→</span>
+          <input class="di" type="date" id="to-d">
+          <button class="btn btn-p" onclick="loadHistory()">LOAD CHART</button>
+          <div id="hist-err" class="al al-err" style="display:none;margin-bottom:0"><span class="al-icon">❌</span><span id="hist-err-txt"></span></div>
+        </div>
+        <div class="chart-wrap">
+          <div class="chart-lbl" id="chart-lbl">CANDLESTICK · select symbol &amp; press LOAD</div>
+          <canvas id="cc" style="width:100%;display:block" height="240"></canvas>
+        </div>
+        <div class="hist-table-wrap" id="ht-wrap" style="display:none">
+          <div class="hist-t-hdr" id="ht-hdr"></div>
+          <div style="overflow-x:auto"><table class="ht"><thead><tr>
+            <th style="text-align:left">DATE / TIME</th><th>OPEN</th><th>HIGH</th><th>LOW</th><th>CLOSE</th><th>VOLUME</th><th>CHG %</th>
+          </tr></thead><tbody id="ht-body"></tbody></table></div>
+        </div>
+      </div>
+
+    </div><!-- /main -->
+  </div><!-- /dash-body -->
+</div><!-- /dash -->
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   CONSTANTS & STATE
+══════════════════════════════════════════════════════════════ */
+const SK = { C:'fyers:creds', S:'fyers:session' };
+const LS = {
+  get(k){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}},
+  set(k,v){ try{localStorage.setItem(k,JSON.stringify(v))}catch(e){} },
+  del(k){ try{localStorage.removeItem(k)}catch(e){} }
+};
+
+// Fyers API — Authorization must be "APPID:accessToken"
+const API = {
+  AUTH:    'https://api-t1.fyers.in/api/v3/generate-authcode',
+  TOKEN:   'https://api-t1.fyers.in/api/v3/validate-authcode',
+  QUOTES:  'https://api-t1.fyers.in/data/quotes',
+  // Depth: use data API v1 (v2/v3 depth endpoint returns HTML from browser due to CORS)
+  DEPTH:   'https://api-t1.fyers.in/data/depth',
+  HISTORY: 'https://api-t1.fyers.in/data/history',
+  PROFILE: 'https://api-t2.fyers.in/api/v3/profile',
+};
+
+let creds=null, session=null;
+// watchlist: [{sym, data}]
+let watchlist = [];
+let refreshTimer=null, clockTimer=null;
+let currentRes='1D', candleData=[];
+
+const DEFAULT_SYMS = [
+  'NSE:RELIANCE-EQ','NSE:INFY-EQ','NSE:TCS-EQ','NSE:HDFCBANK-EQ',
+  'NSE:ICICIBANK-EQ','NSE:SBIN-EQ','NSE:WIPRO-EQ','NSE:BAJFINANCE-EQ',
+  'NSE:NIFTY50-INDEX','BSE:SENSEX-INDEX'
+];
+const RESOLUTIONS = [
+  {l:'1m',v:'1'},{l:'5m',v:'5'},{l:'15m',v:'15'},{l:'30m',v:'30'},
+  {l:'1H',v:'60'},{l:'1D',v:'1D'},{l:'1W',v:'1W'},{l:'1M',v:'1M'}
+];
+
+/* ══════════════════════════════════════════════════════════════
+   AUTH HELPERS
+══════════════════════════════════════════════════════════════ */
+async function sha256(str){
+  const buf=new TextEncoder().encode(str);
+  const hash=await crypto.subtle.digest('SHA-256',buf);
+  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// KEY FIX: Fyers requires Authorization = "APPID:accessToken"
+function authHeader(){ return `${creds.appId}:${session.token}`; }
+function hdrs(){ return { 'Authorization': authHeader(), 'Content-Type':'application/json' }; }
+
+function nextMidnightIST(){
+  const now=new Date();
+  const ist=new Date(now.toLocaleString('en-US',{timeZone:'Asia/Kolkata'}));
+  ist.setHours(23,58,0,0);
+  const diff=now.getTime()-new Date(now.toLocaleString('en-US',{timeZone:'Asia/Kolkata'})).getTime();
+  return ist.getTime()+diff;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded',async()=>{
+  creds  =LS.get(SK.C);
+  session=LS.get(SK.S);
+  const ok=session?.token&&session?.expiry&&Date.now()<session.expiry;
+  document.getElementById('boot').style.display='none';
+  if(ok){ restoreWatchlist(); showDash(); }
+  else if(creds){ showLogin(); }
+  else{ showSetup(); }
+  buildResButtons();
+  initDates();
+});
+
+/* ══════════════════════════════════════════════════════════════
+   SCREENS
+══════════════════════════════════════════════════════════════ */
+function hideAll(){
+  ['sc-setup','sc-login'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.getElementById('dash').classList.remove('show');
+}
+function showSetup(){
+  hideAll(); document.getElementById('sc-setup').classList.add('active');
+  if(creds){
+    document.getElementById('s-appid').value=creds.appId||'';
+    document.getElementById('s-secret').value=creds.secret||'';
+    document.getElementById('s-redir').value=creds.redirectUri||'https://trade.fyers.in';
+  }
+}
+function showLogin(){
+  hideAll(); document.getElementById('sc-login').classList.add('active');
+  if(creds){ document.getElementById('l-appid').textContent='App: '+creds.appId; document.getElementById('l-redir').textContent=creds.redirectUri; }
+  setStep(1);
+}
+function showDash(){
+  hideAll(); document.getElementById('dash').classList.add('show');
+  startClock(); fetchProfile();
+  clearInterval(refreshTimer);
+  refreshTimer=setInterval(refreshAll,5000);
+  refreshAll();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SETUP
+══════════════════════════════════════════════════════════════ */
+function setupSave(){
+  const appId=document.getElementById('s-appid').value.trim();
+  const secret=document.getElementById('s-secret').value.trim();
+  const redirectUri=document.getElementById('s-redir').value.trim()||'https://trade.fyers.in';
+  if(!appId||!secret){alert('App ID and App Secret are required.');return;}
+  creds={appId,secret,redirectUri};
+  LS.set(SK.C,creds);
+  showLogin();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LOGIN
+══════════════════════════════════════════════════════════════ */
+function setStep(n){
+  document.getElementById('ls1').style.display=n===1?'block':'none';
+  document.getElementById('ls2').style.display=n===2?'block':'none';
+  document.getElementById('sd1').className='sdot '+(n>=1?n>1?'sdot-done':'sdot-act':'sdot-idle');
+  document.getElementById('sd2').className='sdot '+(n===2?'sdot-act':'sdot-idle');
+  document.getElementById('sl1').className='slbl slbl-act';
+  document.getElementById('sl2').className='slbl '+(n===2?'slbl-act':'slbl-idle');
+  document.getElementById('sln').className='sline '+(n>1?'sline-done':'');
+  document.getElementById('l-err').style.display='none';
+}
+function backStep(){setStep(1);}
+
+async function doOpenLogin(){
+  const h=await sha256(creds.appId+':'+creds.secret);
+  const state=Math.random().toString(36).slice(2);
+  const url=`${API.AUTH}?client_id=${encodeURIComponent(creds.appId)}&redirect_uri=${encodeURIComponent(creds.redirectUri)}&response_type=code&state=${state}`;
+  window.open(url,'_blank');
+  setStep(2);
+}
+
+function extractCode(s){
+  s=s.trim();
+  try{const u=new URL(s);const c=u.searchParams.get('auth_code')||u.searchParams.get('code');if(c)return c;}catch(e){}
+  if(/^[a-zA-Z0-9_\-.]+$/.test(s)&&s.length>10)return s;
+  return null;
+}
+
+async function exchangeCode(){
+  const code=extractCode(document.getElementById('paste-url').value);
+  if(!code){showErr('l-err','l-err-txt','Could not find auth_code. Paste the full redirect URL from address bar.');return;}
+  const btn=document.getElementById('xbtn');
+  btn.disabled=true; btn.textContent='VERIFYING…';
+  document.getElementById('l-err').style.display='none';
+  try{
+    const hash=await sha256(creds.appId+':'+creds.secret);
+    const r=await fetch(API.TOKEN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({grant_type:'authorization_code',appIdHash:hash,code})});
+    const d=await r.json();
+    if(d.s==='ok'&&d.access_token){
+      session={token:d.access_token,userId:d.fy_id||creds.appId,expiry:nextMidnightIST()};
+      LS.set(SK.S,session);
+      restoreWatchlist();
+      showDash();
+    }else{ showErr('l-err','l-err-txt',d.message||JSON.stringify(d)); }
+  }catch(e){showErr('l-err','l-err-txt','Error: '+e.message);}
+  btn.disabled=false; btn.textContent='GENERATE TOKEN →';
+}
+
+function showErr(wrapId,txtId,msg){
+  document.getElementById(wrapId).style.display='flex';
+  document.getElementById(txtId).textContent=msg;
+}
+function hideErr(wrapId){document.getElementById(wrapId).style.display='none';}
+
+/* ══════════════════════════════════════════════════════════════
+   AUTH/LOGOUT
+══════════════════════════════════════════════════════════════ */
+function logout(){clearInterval(refreshTimer);clearInterval(clockTimer);LS.del(SK.S);session=null;showLogin();}
+function relogin(){logout();}
+
+/* ══════════════════════════════════════════════════════════════
+   CLOCK + SESSION
+══════════════════════════════════════════════════════════════ */
+function startClock(){
+  clearInterval(clockTimer);
+  function tick(){
+    document.getElementById('ist-clk').textContent=new Date().toLocaleTimeString('en-IN',{hour12:false,timeZone:'Asia/Kolkata'})+' IST';
+    if(!session?.expiry)return;
+    const diff=session.expiry-Date.now();
+    const dot=document.getElementById('sess-dot'),lbl=document.getElementById('sess-lbl');
+    if(diff<=0){dot.className='sess-dot sess-bad';lbl.style.color='var(--red)';lbl.textContent='TOKEN EXPIRED';}
+    else{
+      const h=Math.floor(diff/3600000),m=Math.floor((diff%3600000)/60000);
+      lbl.textContent='SESSION · '+(h>0?h+'h ':'')+m+'m';
+      if(diff<1800000){dot.className='sess-dot sess-warn';lbl.style.color='var(--amber)';}
+      else{dot.className='sess-dot sess-ok';lbl.style.color='var(--green)';}
+    }
+  }
+  tick(); clockTimer=setInterval(tick,1000);
+}
+
+async function fetchProfile(){
+  try{
+    const r=await fetch(API.PROFILE,{headers:hdrs()});
+    // Check content-type before parsing
+    const ct=r.headers.get('content-type')||'';
+    if(!ct.includes('application/json'))return;
+    const d=await r.json();
+    if(d.s==='ok'&&d.data){
+      const el=document.getElementById('tb-user');
+      el.textContent=(d.data.name||d.data.fy_id||'Trader').toUpperCase();
+      el.style.display='inline';
+    }
+  }catch(e){}
+}
+
+/* ══════════════════════════════════════════════════════════════
+   WATCHLIST MANAGEMENT
+══════════════════════════════════════════════════════════════ */
+function restoreWatchlist(){
+  const saved=LS.get('fyers:watchlist');
+  if(saved&&Array.isArray(saved)&&saved.length>0){
+    watchlist=saved.map(s=>({sym:s,data:null}));
+  } else {
+    watchlist=DEFAULT_SYMS.map(s=>({sym:s,data:null}));
+  }
+  updateSymbolSelects();
+  renderMarketTable();
+  renderSidebar();
+}
+
+function saveWatchlistSyms(){
+  LS.set('fyers:watchlist', watchlist.map(w=>w.sym));
+}
+
+function addSymbol(){
+  const inp=document.getElementById('sb-addinp');
+  addSym(inp.value.trim().toUpperCase());
+  inp.value='';
+}
+function bulkAdd(){
+  const inp=document.getElementById('bulk-inp');
+  const syms=inp.value.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
+  syms.forEach(addSym);
+  inp.value='';
+}
+function addSym(sym){
+  if(!sym||watchlist.find(w=>w.sym===sym))return;
+  if(watchlist.length>=50){alert('Maximum 50 symbols supported.');return;}
+  watchlist.push({sym,data:null});
+  saveWatchlistSyms();
+  updateSymbolSelects();
+  renderMarketTable();
+  renderSidebar();
+  fetchQuotesForSymbols([sym]);
+}
+function removeSym(sym){
+  watchlist=watchlist.filter(w=>w.sym!==sym);
+  saveWatchlistSyms();
+  updateSymbolSelects();
+  renderMarketTable();
+  renderSidebar();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   QUOTES — fetch up to 50 symbols at once
+══════════════════════════════════════════════════════════════ */
+async function refreshAll(){
+  if(!watchlist.length)return;
+  // Fyers quotes API supports comma-separated symbols
+  const syms=watchlist.map(w=>w.sym).join(',');
+  try{
+    const r=await fetch(`${API.QUOTES}?symbols=${encodeURIComponent(syms)}`,{headers:hdrs()});
+    const ct=r.headers.get('content-type')||'';
+    if(!ct.includes('application/json')){console.warn('Quotes: non-JSON response');return;}
+    const d=await r.json();
+    if(d.s==='ok'&&Array.isArray(d.d)){
+      d.d.forEach(item=>{
+        const v=item.v||item;
+        const sym=item.n||v.n||v.symbol;
+        const entry=watchlist.find(w=>w.sym===sym||w.sym.split(':')[1]===sym);
+        if(entry) entry.data=v;
+      });
+      renderMarketTable();
+      renderSidebar();
+      document.getElementById('last-upd').textContent='Updated: '+new Date().toLocaleTimeString('en-IN',{hour12:false,timeZone:'Asia/Kolkata'});
+    }
+  }catch(e){console.error('Quote fetch error:',e);}
+}
+
+async function fetchQuotesForSymbols(syms){
+  try{
+    const r=await fetch(`${API.QUOTES}?symbols=${encodeURIComponent(syms.join(','))}`,{headers:hdrs()});
+    const ct=r.headers.get('content-type')||'';
+    if(!ct.includes('application/json'))return;
+    const d=await r.json();
+    if(d.s==='ok'&&Array.isArray(d.d)){
+      d.d.forEach(item=>{
+        const v=item.v||item;
+        const sym=item.n||v.n||v.symbol;
+        const entry=watchlist.find(w=>w.sym===sym||w.sym.split(':')[1]===sym);
+        if(entry) entry.data=v;
+      });
+      renderMarketTable();
+      renderSidebar();
+    }
+  }catch(e){}
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MARKET TABLE RENDER
+══════════════════════════════════════════════════════════════ */
+function fmt2(v){return v!=null?v.toFixed(2):'—';}
+function fmtVol(v){if(!v)return '—'; if(v>=1e7)return (v/1e7).toFixed(2)+'Cr'; if(v>=1e5)return (v/1e5).toFixed(2)+'L'; return v.toLocaleString('en-IN');}
+
+function renderMarketTable(){
+  const tbody=document.getElementById('mkt-body');
+  document.getElementById('sym-count').textContent=watchlist.length+' symbols';
+  document.getElementById('wl-count').textContent=watchlist.length;
+  if(!watchlist.length){tbody.innerHTML='<tr><td colspan="15" class="empty-state">No symbols added. Type above and press ADD.</td></tr>';return;}
+  tbody.innerHTML=watchlist.map(w=>{
+    const q=w.data;
+    const sym=w.sym;
+    const shortSym=sym.split(':')[1]||sym;
+    const exch=sym.split(':')[0]||'';
+    if(!q){
+      return `<tr onclick="selectSym('${sym}')">
+        <td><span style="font-weight:700">${shortSym}</span><span class="sym-tag">${exch}</span></td>
+        <td colspan="13" style="color:var(--muted);text-align:center;font-size:11px">Loading…</td>
+        <td><button onclick="event.stopPropagation();removeSym('${sym}')" style="background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.25);color:var(--red);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:10px;font-family:var(--mono)">✕</button></td>
+      </tr>`;
+    }
+    const lp=q.lp??q.last_price??0;
+    const prev=q.prev_close_price??q.prev_close??lp;
+    const chg=q.ch??(lp-prev);
+    const pct=q.chp??((chg/(prev||1))*100);
+    const up=chg>0,dn=chg<0;
+    const cc=up?'up':dn?'dn':'neutral';
+    const badgeCls=up?'chg-up':dn?'chg-dn':'chg-nt';
+    const arrow=up?'▲':dn?'▼':'—';
+    return `<tr onclick="selectSym('${sym}')">
+      <td><span style="font-weight:700">${shortSym}</span><span class="sym-tag">${exch}</span></td>
+      <td class="${cc}" style="font-weight:700;font-size:13px">₹${fmt2(lp)}</td>
+      <td class="${cc}">${arrow} ₹${fmt2(Math.abs(chg))}</td>
+      <td><span class="chg-badge ${badgeCls}">${up?'+':''}${fmt2(pct)}%</span></td>
+      <td>₹${fmt2(q.open_price??q.o)}</td>
+      <td class="up">₹${fmt2(q.high_price??q.h)}</td>
+      <td class="dn">₹${fmt2(q.low_price??q.l)}</td>
+      <td>₹${fmt2(prev)}</td>
+      <td>${fmtVol(q.volume??q.v)}</td>
+      <td class="up">${fmtVol(q.buy_qty)}</td>
+      <td class="dn">${fmtVol(q.sell_qty)}</td>
+      <td class="up">${q['52_week_high']?'₹'+fmt2(q['52_week_high']):'—'}</td>
+      <td class="dn">${q['52_week_low']?'₹'+fmt2(q['52_week_low']):'—'}</td>
+      <td>₹${fmt2(q.avg_price)}</td>
+      <td><button onclick="event.stopPropagation();removeSym('${sym}')" style="background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.25);color:var(--red);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:10px;font-family:var(--mono)">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════════════════════════════ */
+function renderSidebar(){
+  const filter=document.getElementById('sb-filter').value.toLowerCase();
+  const list=document.getElementById('sb-list');
+  list.innerHTML=watchlist.filter(w=>w.sym.toLowerCase().includes(filter)).map(w=>{
+    const q=w.data;
+    const short=w.sym.split(':')[1]||w.sym;
+    if(!q) return `<div class="sb-item"><span class="sb-sym">${short}</span><span style="color:var(--muted);font-family:var(--mono);font-size:10px">—</span></div>`;
+    const lp=q.lp??q.last_price??0;
+    const prev=q.prev_close_price??q.prev_close??lp;
+    const chg=q.ch??(lp-prev);
+    const up=chg>=0;
+    return `<div class="sb-item" onclick="selectSym('${w.sym}')">
+      <div style="flex:1;overflow:hidden"><div class="sb-sym">${short}</div></div>
+      <div><div class="sb-price ${up?'up':'dn'}">₹${fmt2(lp)}</div><div class="sb-chg ${up?'up':'dn'}">${up?'+':''}${fmt2(chg)}</div></div>
+    </div>`;
+  }).join('');
+}
+function filterSidebar(){renderSidebar();}
+
+/* ══════════════════════════════════════════════════════════════
+   SYMBOL SELECTS (depth / history dropdowns)
+══════════════════════════════════════════════════════════════ */
+function updateSymbolSelects(){
+  ['depth-sym-sel','hist-sym-sel'].forEach(id=>{
+    const sel=document.getElementById(id);
+    const cur=sel.value;
+    sel.innerHTML='<option value="">Select a symbol…</option>'+watchlist.map(w=>`<option value="${w.sym}">${w.sym}</option>`).join('');
+    if(watchlist.find(w=>w.sym===cur)) sel.value=cur;
+  });
+}
+
+function selectSym(sym){
+  document.getElementById('depth-sym-sel').value=sym;
+  document.getElementById('hist-sym-sel').value=sym;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TABS
+══════════════════════════════════════════════════════════════ */
+function switchTab(name,btn){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.style.display='none');
+  btn.classList.add('on');
+  document.getElementById('p-'+name).style.display='block';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DEPTH  — KEY FIX: use data API with correct auth header
+══════════════════════════════════════════════════════════════ */
+async function loadDepth(){
+  const sym=document.getElementById('depth-sym-sel').value;
+  if(!sym){alert('Please select a symbol first.');return;}
+  document.getElementById('depth-sym-lbl').textContent=sym;
+  hideErr('depth-err');
+  document.getElementById('ob-content').innerHTML='<div class="empty-state">Loading…</div>';
+  document.getElementById('ohlcv-snap').innerHTML='<div class="empty-state">Loading…</div>';
+  try{
+    // Use data/depth endpoint with APPID:token auth
+    const r=await fetch(`${API.DEPTH}?symbol=${encodeURIComponent(sym)}&ohlcv_flag=1`,{headers:hdrs()});
+    const ct=r.headers.get('content-type')||'';
+    if(!ct.includes('application/json')){
+      // Fallback: depth data may be embedded in quotes response
+      showErr('depth-err','depth-err-txt','Depth API returned non-JSON. This may be due to CORS restrictions on this endpoint from browser. LTP data is shown in Market Watch.');
+      document.getElementById('ob-content').innerHTML='<div class="empty-state">Not available from browser</div>';
+      return;
+    }
+    const d=await r.json();
+    if(d.s==='ok'){
+      const depth=d.d?.[sym]||d.d;
+      renderOB(depth);
+      renderOHLCV(depth);
+    }else{
+      showErr('depth-err','depth-err-txt',d.message||'Failed to load depth');
+      document.getElementById('ob-content').innerHTML='<div class="empty-state">Error loading depth</div>';
+    }
+  }catch(e){
+    showErr('depth-err','depth-err-txt','Error: '+e.message);
+    document.getElementById('ob-content').innerHTML='<div class="empty-state">Error: '+e.message+'</div>';
+  }
+}
+
+function renderOB(depth){
+  if(!depth){document.getElementById('ob-content').innerHTML='<div class="empty-state">No data</div>';return;}
+  const bids=depth.bids||[],asks=depth.asks||[];
+  const maxV=Math.max(...bids.map(b=>b.quantity||0),...asks.map(a=>a.quantity||0),1);
+  let html=`<div class="ob-hdr"><span class="ob-hlbl" style="color:var(--red)">PRICE</span><span class="ob-hlbl" style="text-align:center">ORDERS</span><span class="ob-hlbl" style="text-align:right">QTY</span></div>`;
+  html+='<div style="color:var(--red);font-size:9px;font-family:var(--mono);letter-spacing:2px;margin-bottom:4px;font-weight:700">ASKS ▲</div>';
+  asks.slice(0,5).reverse().forEach(a=>{
+    const p=(a.quantity/maxV)*100;
+    html+=`<div class="ob-row"><div class="ob-bar" style="background:var(--red);left:0;width:${p}%"></div><span class="ob-p dn">${fmt2(a.price)}</span><span class="ob-o">${a.orders}</span><span class="ob-q" style="text-align:right">${(a.quantity||0).toLocaleString('en-IN')}</span></div>`;
+  });
+  html+='<div style="border-top:2px solid var(--border2);border-bottom:2px solid var(--border2);margin:8px 0;padding:2px 0">';
+  bids.slice(0,5).forEach(b=>{
+    const p=(b.quantity/maxV)*100;
+    html+=`<div class="ob-row"><div class="ob-bar" style="background:var(--green);right:0;width:${p}%"></div><span class="ob-p up">${fmt2(b.price)}</span><span class="ob-o">${b.orders}</span><span class="ob-q" style="text-align:left">${(b.quantity||0).toLocaleString('en-IN')}</span></div>`;
+  });
+  html+='</div><div style="color:var(--green);font-size:9px;font-family:var(--mono);letter-spacing:2px;font-weight:700">▼ BIDS</div>';
+  html+=`<div class="depth-totals"><div class="dt-card"><div style="color:var(--muted);font-size:9px;font-family:var(--mono);margin-bottom:2px">TOTAL BUY QTY</div><div style="color:var(--green);font-family:var(--mono);font-weight:700">${(depth.totalbuyqty||0).toLocaleString('en-IN')}</div></div><div class="dt-card"><div style="color:var(--muted);font-size:9px;font-family:var(--mono);margin-bottom:2px">TOTAL SELL QTY</div><div style="color:var(--red);font-family:var(--mono);font-weight:700">${(depth.totalsellqty||0).toLocaleString('en-IN')}</div></div></div>`;
+  document.getElementById('ob-content').innerHTML=html;
+}
+
+function renderOHLCV(depth){
+  if(!depth?.o){document.getElementById('ohlcv-snap').innerHTML='<div class="empty-state">OHLCV not available</div>';return;}
+  const rows=[['OPEN',fmt2(depth.o),''],['HIGH',fmt2(depth.h),'up'],['LOW',fmt2(depth.l),'dn'],['CLOSE',fmt2(depth.c),''],['VOLUME',(depth.v||0).toLocaleString('en-IN'),'']];
+  document.getElementById('ohlcv-snap').innerHTML='<div class="stat-mini-grid">'+rows.map(([l,v,c])=>`<div class="stat-mini"><div class="stat-mini-l">${l}</div><div class="stat-mini-v ${c}">₹${v}</div></div>`).join('')+'</div>';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   HISTORY
+══════════════════════════════════════════════════════════════ */
+function buildResButtons(){
+  const row=document.getElementById('res-row'); row.innerHTML='';
+  RESOLUTIONS.forEach(r=>{
+    const b=document.createElement('button');
+    b.className='rb'+(r.v===currentRes?' on':'');
+    b.textContent=r.l;
+    b.onclick=()=>{ currentRes=r.v; document.querySelectorAll('.rb').forEach(x=>x.classList.remove('on')); b.classList.add('on'); };
+    row.appendChild(b);
+  });
+}
+function initDates(){
+  const t=new Date(),f=new Date();
+  f.setMonth(f.getMonth()-3);
+  document.getElementById('to-d').value=t.toISOString().split('T')[0];
+  document.getElementById('from-d').value=f.toISOString().split('T')[0];
+}
+
+async function loadHistory(){
+  const sym=document.getElementById('hist-sym-sel').value;
+  if(!sym){alert('Please select a symbol first.');return;}
+  hideErr('hist-err');
+  const from=Math.floor(new Date(document.getElementById('from-d').value).getTime()/1000);
+  const to=Math.floor(new Date(document.getElementById('to-d').value).getTime()/1000);
+  try{
+    const r=await fetch(`${API.HISTORY}?symbol=${encodeURIComponent(sym)}&resolution=${currentRes}&date_format=1&range_from=${from}&range_to=${to}&cont_flag=1`,{headers:hdrs()});
+    const ct=r.headers.get('content-type')||'';
+    if(!ct.includes('application/json')){showErr('hist-err','hist-err-txt','History API returned non-JSON response. Please check token.');return;}
+    const d=await r.json();
+    if(d.s==='ok'){
+      candleData=(d.candles||[]).map(([ts,o,h,l,c,v])=>({ts,open:o,high:h,low:l,close:c,volume:v}));
+      document.getElementById('chart-lbl').textContent=`CANDLESTICK · ${sym} · ${currentRes} · ${candleData.length} candles`;
+      drawCandles();
+      renderHistTable(sym);
+    }else{
+      showErr('hist-err','hist-err-txt',d.message||'Failed: '+JSON.stringify(d));
+    }
+  }catch(e){showErr('hist-err','hist-err-txt','Error: '+e.message);}
+}
+
+/* ── Candle Chart ── */
+function drawCandles(){
+  const cvs=document.getElementById('cc');
+  const W=cvs.offsetWidth||800; cvs.width=W;
+  const ctx=cvs.getContext('2d');
+  const H=240,PAD={t:12,r:14,b:28,l:62};
+  ctx.clearRect(0,0,W,H);
+  if(!candleData.length){
+    ctx.fillStyle='#7a8aaa';ctx.font='12px JetBrains Mono,monospace';ctx.textAlign='center';
+    ctx.fillText('No data — select symbol & press LOAD',W/2,H/2);return;
+  }
+  const n=Math.min(candleData.length,100),slice=candleData.slice(-n);
+  const mn=Math.min(...slice.map(c=>c.low)),mx=Math.max(...slice.map(c=>c.high)),rng=mx-mn||1;
+  const cW=W-PAD.l-PAD.r,cH=H-PAD.t-PAD.b;
+  const bw=Math.max(2,(cW/n)-1.5);
+  const yS=v=>PAD.t+cH-((v-mn)/rng)*cH;
+  const xS=i=>PAD.l+i*(cW/n)+(cW/n)/2;
+  // grid
+  for(let i=0;i<5;i++){
+    const v=mn+(rng*i)/4,y=yS(v);
+    ctx.strokeStyle='#1a2035';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(W-PAD.r,y);ctx.stroke();
+    ctx.fillStyle='#7a8aaa';ctx.font='9px JetBrains Mono,monospace';ctx.textAlign='right';
+    ctx.fillText(v.toFixed(0),PAD.l-5,y+3);
+  }
+  ctx.setLineDash([]);
+  // candles
+  slice.forEach((c,i)=>{
+    const bull=c.close>=c.open,col=bull?'#00e676':'#ff3d5a';
+    const x=xS(i),oY=yS(c.open),cY=yS(c.close);
+    const bodyT=Math.min(oY,cY),bodyH=Math.max(Math.abs(oY-cY),1.5);
+    ctx.strokeStyle=col;ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,yS(c.high));ctx.lineTo(x,yS(c.low));ctx.stroke();
+    ctx.fillStyle=col;ctx.globalAlpha=.85;
+    ctx.fillRect(x-bw/2,bodyT,bw,bodyH);
+    ctx.globalAlpha=1;
+  });
+  // x labels
+  const step=Math.ceil(n/7);
+  slice.filter((_,i)=>i%step===0).forEach((c,_,arr)=>{
+    const i=slice.indexOf(c);
+    ctx.fillStyle='#7a8aaa';ctx.font='8px JetBrains Mono,monospace';ctx.textAlign='center';
+    ctx.fillText(new Date(c.ts*1000).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}),xS(i),H-5);
+  });
+}
+
+function renderHistTable(sym){
+  const show=candleData.length>0;
+  document.getElementById('ht-wrap').style.display=show?'block':'none';
+  if(!show)return;
+  const shown=Math.min(candleData.length,30);
+  document.getElementById('ht-hdr').textContent=`${sym} · ${currentRes} · Showing last ${shown} of ${candleData.length} candles`;
+  document.getElementById('ht-body').innerHTML=candleData.slice(-shown).reverse().map((c,i)=>{
+    const up=c.close>=c.open,pct=((c.close-c.open)/c.open*100).toFixed(2);
+    const d=new Date(c.ts*1000);
+    const ds=d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
+    const ts=['1D','1W','1M'].includes(currentRes)?'':' '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false});
+    return `<tr>
+      <td>${ds}<span style="color:var(--dim)">${ts}</span></td>
+      <td>₹${fmt2(c.open)}</td>
+      <td class="up">₹${fmt2(c.high)}</td>
+      <td class="dn">₹${fmt2(c.low)}</td>
+      <td style="font-weight:600">₹${fmt2(c.close)}</td>
+      <td>${fmtVol(c.volume)}</td>
+      <td class="${up?'up':'dn'}" style="font-weight:700">${up?'+':''}${pct}%</td>
+    </tr>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
