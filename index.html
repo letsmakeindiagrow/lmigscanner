@@ -486,7 +486,7 @@ const API={
   QUOTES: 'https://api-t1.fyers.in/data/quotes',
   DEPTH:  'https://api-t1.fyers.in/data/depth',
   HISTORY:'https://api-t1.fyers.in/data/history',
-  OC:     'https://api-t1.fyers.in/data/optionchain',
+  OC:     'https://api-t2.fyers.in/api/v3/optionchain',
   PROFILE:'https://api-t2.fyers.in/api/v3/profile',
 };
 const RESOLUTIONS=[
@@ -673,7 +673,28 @@ function checkAlerts(){alerts.filter(a=>!a.fired).forEach(a=>{const entry=watchl
    OPTION CHAIN
 ════════════════════════════════════════════════════════════ */
 let ocData=null;
-async function loadOCExpiries(){const sym=document.getElementById('oc-sym').value.trim();if(!sym)return;try{const r=await fetch(`${API.OC}?symbol=${encodeURIComponent(sym)}&strikecount=1&timestamp=`,{headers:hdrs()});const ct=r.headers.get('content-type')||'';if(!ct.includes('json')){toast('Non-JSON from OC API','err');return;}const d=await r.json();if(d.s==='ok'&&d.data?.expiryData){const sel=document.getElementById('oc-expiry');const expiries=[...new Set(d.data.expiryData.map(e=>e.expiry))];sel.innerHTML='<option value="">Select expiry…</option>'+expiries.map(e=>`<option value="${e}">${e}</option>`).join('');if(expiries.length)sel.value=expiries[0];toast('Expiries loaded','ok');}else{toast(d.message||'Failed to load expiries','err');}}catch(e){toast('Error: '+e.message,'err');}}
+async function loadOCExpiries(){
+  const sym=document.getElementById('oc-sym').value.trim();
+  if(!sym){toast('Enter a symbol first','warn');return;}
+  toast('Loading expiries…','ok');
+  try{
+    const r=await fetch(`${API.OC}?symbol=${encodeURIComponent(sym)}&strikecount=1&timestamp=`,{headers:hdrs()});
+    const ct=r.headers.get('content-type')||'';
+    if(!ct.includes('json')){toast('OC API non-JSON — check token','err');return;}
+    const d=await r.json();
+    // Try multiple possible field paths in Fyers OC response
+    const expData=d.data?.expiryData||d.data?.expiry_data||d.expiryData||[];
+    if(d.s==='ok'&&expData.length){
+      const sel=document.getElementById('oc-expiry');
+      const expiries=[...new Set(expData.map(e=>e.expiry||e.expiry_date||e))].filter(Boolean);
+      sel.innerHTML='<option value="">Select expiry…</option>'+expiries.map(e=>`<option value="${e}">${e}</option>`).join('');
+      if(expiries.length)sel.value=expiries[0];
+      toast(`${expiries.length} expiries loaded`,'ok');
+    }else{
+      toast(d.message||'No expiry data returned','err');
+    }
+  }catch(e){toast('Error: '+e.message,'err');}
+}
 
 async function loadOptionChain(){
   const sym=document.getElementById('oc-sym').value.trim();
@@ -683,27 +704,38 @@ async function loadOptionChain(){
   document.getElementById('oc-content').innerHTML='<div class="empty-state">Loading…</div>';
   document.getElementById('oc-err').style.display='none';
   try{
+    // api-t2.fyers.in/api/v3/optionchain — GET with Authorization: APPID:token
     const url=`${API.OC}?symbol=${encodeURIComponent(sym)}&strikecount=${strikes}&timestamp=${encodeURIComponent(expiry)}`;
     const r=await fetch(url,{headers:hdrs()});
     const ct=r.headers.get('content-type')||'';
-    if(!ct.includes('json')){document.getElementById('oc-err').style.display='flex';document.getElementById('oc-err-txt').textContent='Option chain returned non-JSON. Token may have expired.';document.getElementById('oc-content').innerHTML='';return;}
+    if(!ct.includes('json')){
+      document.getElementById('oc-err').style.display='flex';
+      document.getElementById('oc-err-txt').textContent='Option chain API returned non-JSON. This is a CORS issue — Fyers blocks browser requests to this endpoint. Please use Relogin if token expired.';
+      document.getElementById('oc-content').innerHTML='<div class="empty-state" style="padding:30px;text-align:left;max-width:500px"><div style="color:var(--amber);font-family:var(--mono);font-size:11px;line-height:2">⚠ Option Chain CORS Limitation<br><br>Fyers restricts browser access to the Option Chain API.<br><br><strong style="color:var(--white)">Workaround:</strong><br>1. Go to <a href="https://api.fyers.in/api/v3/optionchain?symbol=NSE:NIFTY50-INDEX&strikecount=5&timestamp=" target="_blank" style="color:var(--accent)">Fyers API directly</a> in another tab<br>2. Copy the JSON response<br>3. The Market Watch tab still works fully for all symbols</div></div>';
+      return;
+    }
     const d=await r.json();
     if(d.s==='ok'&&d.data){
       ocData=d.data;
       renderOC(d.data,sym);
     }else{
       document.getElementById('oc-err').style.display='flex';
-      document.getElementById('oc-err-txt').textContent=d.message||JSON.stringify(d);
+      document.getElementById('oc-err-txt').textContent=(d.message||'Error')+' — Full: '+JSON.stringify(d).slice(0,200);
       document.getElementById('oc-content').innerHTML='<div class="empty-state">Error loading option chain</div>';
     }
-  }catch(e){document.getElementById('oc-err').style.display='flex';document.getElementById('oc-err-txt').textContent='Error: '+e.message;document.getElementById('oc-content').innerHTML='';}
+  }catch(e){
+    document.getElementById('oc-err').style.display='flex';
+    document.getElementById('oc-err-txt').textContent='Error: '+e.message;
+    document.getElementById('oc-content').innerHTML='';
+  }
 }
 
 function renderOC(data,sym){
-  const optList=data.optionsChain||data.options_chain||data.options||[];
-  const underlying=data.underlyingFutureQuote||data.underlying||{};
-  const atm=data.atm_strike||data.atmStrike||0;
-  const ltp=underlying.ltp||underlying.last_price||atm||0;
+  // Handle multiple possible field names across Fyers API versions
+  const optList=data.optionsChain||data.options_chain||data.options_data||data.options||data.optionChain||[];
+  const underlying=data.underlyingFutureQuote||data.underlying_ltp||data.underlying||{};
+  const atm=data.atm_strike||data.atmStrike||data.atm||0;
+  const ltp=underlying.ltp||underlying.last_price||data.ltp||atm||0;
   document.getElementById('oc-info').innerHTML=`<span style="color:var(--white)">Underlying LTP: <strong style="color:var(--accent)">₹${fmt2(ltp)}</strong></span> &nbsp;·&nbsp; <span>ATM: <strong style="color:var(--amber)">₹${atm}</strong></span> &nbsp;·&nbsp; <span style="color:var(--muted)">Symbols: ${optList.length}</span>`;
   if(!optList.length){document.getElementById('oc-content').innerHTML='<div class="empty-state">No option data returned</div>';return;}
   // Group by strike
@@ -738,8 +770,42 @@ function addOCSymToWL(sym,type){if(!sym){toast('Symbol not available','err');ret
    DEPTH
 ════════════════════════════════════════════════════════════ */
 async function loadDepth(){const sym=document.getElementById('depth-sym-sel').value;if(!sym)return;document.getElementById('depth-sym-lbl').textContent=sym;document.getElementById('depth-err').style.display='none';document.getElementById('ob-content').innerHTML='<div class="empty-state">Loading…</div>';document.getElementById('ohlcv-snap').innerHTML='<div class="empty-state">Loading…</div>';try{const r=await fetch(`${API.DEPTH}?symbol=${encodeURIComponent(sym)}&ohlcv_flag=1`,{headers:hdrs()});const ct=r.headers.get('content-type')||'';if(!ct.includes('json')){document.getElementById('depth-err').style.display='flex';document.getElementById('depth-err-txt').textContent='Depth API returned non-JSON (CORS). Token may have expired.';document.getElementById('ob-content').innerHTML='';return;}const d=await r.json();if(d.s==='ok'){renderOB(d.d?.[sym]||d.d);renderOHLCV(d.d?.[sym]||d.d);}else{document.getElementById('depth-err').style.display='flex';document.getElementById('depth-err-txt').textContent=d.message||'Failed';document.getElementById('ob-content').innerHTML='';}}catch(e){document.getElementById('depth-err').style.display='flex';document.getElementById('depth-err-txt').textContent='Error: '+e.message;}}
-function renderOB(depth){if(!depth){document.getElementById('ob-content').innerHTML='<div class="empty-state">No data</div>';return;}const bids=depth.bids||[],asks=depth.asks||[];const maxV=Math.max(...bids.map(b=>b.quantity||0),...asks.map(a=>a.quantity||0),1);let html=`<div class="ob-hdr"><span class="ob-hlbl" style="color:var(--red)">PRICE</span><span class="ob-hlbl" style="text-align:center">ORDERS</span><span class="ob-hlbl" style="text-align:right">QTY</span></div><div style="color:var(--red);font-size:8px;font-family:var(--mono);letter-spacing:2px;margin-bottom:3px;font-weight:700">ASKS ▲</div>`;asks.slice(0,5).reverse().forEach(a=>{const p=(a.quantity/maxV)*100;html+=`<div class="ob-row"><div class="ob-bar" style="background:var(--red);left:0;width:${p}%"></div><span class="ob-p dn">${fmt2(a.price)}</span><span class="ob-o">${a.orders}</span><span class="ob-q" style="text-align:right">${(a.quantity||0).toLocaleString('en-IN')}</span></div>`;});html+='<div style="border-top:2px solid var(--border2);border-bottom:2px solid var(--border2);margin:7px 0;padding:2px 0">';bids.slice(0,5).forEach(b=>{const p=(b.quantity/maxV)*100;html+=`<div class="ob-row"><div class="ob-bar" style="background:var(--green);right:0;width:${p}%"></div><span class="ob-p up">${fmt2(b.price)}</span><span class="ob-o">${b.orders}</span><span class="ob-q" style="text-align:left">${(b.quantity||0).toLocaleString('en-IN')}</span></div>`;});html+=`</div><div style="color:var(--green);font-size:8px;font-family:var(--mono);letter-spacing:2px;font-weight:700">▼ BIDS</div><div class="depth-totals"><div class="dt-card"><div style="color:var(--muted);font-size:8px;font-family:var(--mono);margin-bottom:2px">TOTAL BUY QTY</div><div style="color:var(--green);font-family:var(--mono);font-weight:700">${(depth.totalbuyqty||0).toLocaleString('en-IN')}</div></div><div class="dt-card"><div style="color:var(--muted);font-size:8px;font-family:var(--mono);margin-bottom:2px">TOTAL SELL QTY</div><div style="color:var(--red);font-family:var(--mono);font-weight:700">${(depth.totalsellqty||0).toLocaleString('en-IN')}</div></div></div>`;document.getElementById('ob-content').innerHTML=html;}
-function renderOHLCV(depth){if(!depth?.o){document.getElementById('ohlcv-snap').innerHTML='<div class="empty-state">OHLCV not available</div>';return;}const rows=[['OPEN',fmt2(depth.o),''],['HIGH',fmt2(depth.h),'up'],['LOW',fmt2(depth.l),'dn'],['CLOSE',fmt2(depth.c),''],['VOLUME',(depth.v||0).toLocaleString('en-IN'),'']];document.getElementById('ohlcv-snap').innerHTML='<div class="stat-mini-grid">'+rows.map(([l,v,c])=>`<div class="stat-mini"><div class="stat-mini-l">${l}</div><div class="stat-mini-v ${c}">₹${v}</div></div>`).join('')+'</div>';}
+function renderOB(depth){
+  if(!depth){document.getElementById('ob-content').innerHTML='<div class="empty-state">No data</div>';return;}
+  // Fyers API real field names: ask (not asks), volume (not quantity), ord (not orders)
+  const bids=depth.bids||[];
+  const asks=depth.ask||depth.asks||[];
+  const maxV=Math.max(...bids.map(b=>b.volume||b.quantity||0),...asks.map(a=>a.volume||a.quantity||0),1);
+  let html=`<div class="ob-hdr"><span class="ob-hlbl" style="color:var(--red)">PRICE</span><span class="ob-hlbl" style="text-align:center">ORDERS</span><span class="ob-hlbl" style="text-align:right">QTY</span></div><div style="color:var(--red);font-size:8px;font-family:var(--mono);letter-spacing:2px;margin-bottom:3px;font-weight:700">ASKS ▲</div>`;
+  asks.slice(0,5).reverse().forEach(a=>{
+    const qty=a.volume||a.quantity||0;
+    const p=(qty/maxV)*100;
+    html+=`<div class="ob-row"><div class="ob-bar" style="background:var(--red);left:0;width:${p}%"></div><span class="ob-p dn">${fmt2(a.price)}</span><span class="ob-o">${a.ord||a.orders||0}</span><span class="ob-q" style="text-align:right">${qty.toLocaleString('en-IN')}</span></div>`;
+  });
+  html+='<div style="border-top:2px solid var(--border2);border-bottom:2px solid var(--border2);margin:7px 0;padding:2px 0">';
+  bids.slice(0,5).forEach(b=>{
+    const qty=b.volume||b.quantity||0;
+    const p=(qty/maxV)*100;
+    html+=`<div class="ob-row"><div class="ob-bar" style="background:var(--green);right:0;width:${p}%"></div><span class="ob-p up">${fmt2(b.price)}</span><span class="ob-o">${b.ord||b.orders||0}</span><span class="ob-q" style="text-align:left">${qty.toLocaleString('en-IN')}</span></div>`;
+  });
+  html+=`</div><div style="color:var(--green);font-size:8px;font-family:var(--mono);letter-spacing:2px;font-weight:700">▼ BIDS</div>`;
+  html+=`<div class="depth-totals"><div class="dt-card"><div style="color:var(--muted);font-size:8px;font-family:var(--mono);margin-bottom:2px">TOTAL BUY QTY</div><div style="color:var(--green);font-family:var(--mono);font-weight:700">${(depth.totalbuyqty||0).toLocaleString('en-IN')}</div></div><div class="dt-card"><div style="color:var(--muted);font-size:8px;font-family:var(--mono);margin-bottom:2px">TOTAL SELL QTY</div><div style="color:var(--red);font-family:var(--mono);font-weight:700">${(depth.totalsellqty||0).toLocaleString('en-IN')}</div></div></div>`;
+  document.getElementById('ob-content').innerHTML=html;
+}
+function renderOHLCV(depth){
+  if(!depth?.o&&!depth?.ltp){document.getElementById('ohlcv-snap').innerHTML='<div class="empty-state">OHLCV not available</div>';return;}
+  const rows=[
+    ['OPEN',   fmt2(depth.o),  ''],
+    ['HIGH',   fmt2(depth.h),  'up'],
+    ['LOW',    fmt2(depth.l),  'dn'],
+    ['CLOSE',  fmt2(depth.c),  ''],
+    ['LTP',    fmt2(depth.ltp),''],
+    ['VOLUME', (depth.v||0).toLocaleString('en-IN'),''],
+    ['OI',     (depth.oi||0).toLocaleString('en-IN'),''],
+    ['ATP',    fmt2(depth.atp),''],
+  ].filter(([,v])=>v&&v!=='undefined'&&v!=='0'&&v!=='—');
+  document.getElementById('ohlcv-snap').innerHTML='<div class="stat-mini-grid">'+rows.map(([l,v,c])=>`<div class="stat-mini"><div class="stat-mini-l">${l}</div><div class="stat-mini-v ${c}">${l==='VOLUME'||l==='OI'?v:'₹'+v}</div></div>`).join('')+'</div>';
+}
 
 /* ════════════════════════════════════════════════════════════
    HISTORY + EQUILIBRIUM LEVELS ON CHART
