@@ -484,9 +484,9 @@ const API={
   AUTH:   'https://api-t1.fyers.in/api/v3/generate-authcode',
   TOKEN:  'https://api-t1.fyers.in/api/v3/validate-authcode',
   QUOTES: 'https://api-t1.fyers.in/data/quotes',
-  DEPTH:  'https://api-t1.fyers.in/data/depth',
+  DEPTH:  '/api/depth',        // Netlify proxy → no CORS
   HISTORY:'https://api-t1.fyers.in/data/history',
-  OC:     'https://api-t2.fyers.in/api/v3/optionchain',
+  OC:     '/api/optionchain',  // Netlify proxy → no CORS
   PROFILE:'https://api-t2.fyers.in/api/v3/profile',
 };
 const RESOLUTIONS=[
@@ -678,7 +678,7 @@ async function loadOCExpiries(){
   if(!sym){toast('Enter a symbol first','warn');return;}
   toast('Loading expiries…','ok');
   try{
-    const r=await fetch(`${API.OC}?symbol=${encodeURIComponent(sym)}&strikecount=1&timestamp=`,{headers:hdrs()});
+    const r=await fetch(`${API.OC}?symbol=${encodeURIComponent(sym)}&strikecount=1&timestamp=&token=${encodeURIComponent(creds.appId+':'+session.token)}`);
     const ct=r.headers.get('content-type')||'';
     if(!ct.includes('json')){toast('OC API non-JSON — check token','err');return;}
     const d=await r.json();
@@ -705,13 +705,14 @@ async function loadOptionChain(){
   document.getElementById('oc-err').style.display='none';
   try{
     // api-t2.fyers.in/api/v3/optionchain — GET with Authorization: APPID:token
-    const url=`${API.OC}?symbol=${encodeURIComponent(sym)}&strikecount=${strikes}&timestamp=${encodeURIComponent(expiry)}`;
-    const r=await fetch(url,{headers:hdrs()});
+    // Proxy passes token server-side — no CORS restriction
+    const url=`${API.OC}?symbol=${encodeURIComponent(sym)}&strikecount=${strikes}&timestamp=${encodeURIComponent(expiry)}&token=${encodeURIComponent(creds.appId+':'+session.token)}`;
+    const r=await fetch(url);
     const ct=r.headers.get('content-type')||'';
     if(!ct.includes('json')){
       document.getElementById('oc-err').style.display='flex';
-      document.getElementById('oc-err-txt').textContent='Option chain API returned non-JSON. This is a CORS issue — Fyers blocks browser requests to this endpoint. Please use Relogin if token expired.';
-      document.getElementById('oc-content').innerHTML='<div class="empty-state" style="padding:30px;text-align:left;max-width:500px"><div style="color:var(--amber);font-family:var(--mono);font-size:11px;line-height:2">⚠ Option Chain CORS Limitation<br><br>Fyers restricts browser access to the Option Chain API.<br><br><strong style="color:var(--white)">Workaround:</strong><br>1. Go to <a href="https://api.fyers.in/api/v3/optionchain?symbol=NSE:NIFTY50-INDEX&strikecount=5&timestamp=" target="_blank" style="color:var(--accent)">Fyers API directly</a> in another tab<br>2. Copy the JSON response<br>3. The Market Watch tab still works fully for all symbols</div></div>';
+      document.getElementById('oc-err-txt').textContent='Proxy returned non-JSON. Token may have expired — please Relogin.';
+      document.getElementById('oc-content').innerHTML='<div class="empty-state">Token expired — click Relogin in the top bar</div>';
       return;
     }
     const d=await r.json();
