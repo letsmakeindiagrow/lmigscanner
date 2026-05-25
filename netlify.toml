@@ -1,0 +1,12 @@
+[build]
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/optionchain"
+  to = "/.netlify/functions/optionchain"
+  status = 200
+
+[[redirects]]
+  from = "/api/depth"
+  to = "/.netlify/functions/depth"
+  status = 200
